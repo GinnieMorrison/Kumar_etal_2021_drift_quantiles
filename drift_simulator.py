@@ -137,4 +137,5 @@ if __name__ == "__main__":
 # should un-randomize, make sure get same values returned
 # given the same frequency (do for multiple frequencies so can feel safer)
 # Should start working on unit tests. Should factor out function.
-# 2) Add in plotting abilities (nice to have)
+# 2) add in quantiles...change file name to file prefix to output multiple files.
+# 3) Add in plotting abilities (nice to have)
