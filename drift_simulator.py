@@ -1,6 +1,8 @@
 import numpy as np
 import argparse
 
+import pdb
+
 
 class StoreAsArray(argparse._StoreAction):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -26,14 +28,15 @@ def build_parser():
     parser.add_argument(
         "-t",
         "--total_pop",
+        type=int,
         default=96,
         help="Population size in each generation (number of progeny)",
     )
     parser.add_argument(
-        "-m", "--no_males", default=48, help="Number of males contributing gametes"
+        "-m", "--no_males", type=int, default=48, help="Number of males contributing gametes"
     )
     parser.add_argument(
-        "-f", "--no_females", default=48, help="Number of females contributing gametes"
+        "-f", "--no_females", type=int, default=48, help="Number of females contributing gametes"
     )
     parser.add_argument(
         "-c", "--cycles", default=1, help="Number of generations of random mating"
@@ -45,7 +48,7 @@ def build_parser():
         help="True/False, create a plot of allele frequencies for each simulation",
     )
     parser.add_argument(
-        "-s", "--sims", default=1, help="Number of simulations to perform"
+        "-s", "--sims", default=1, type=int, help="Number of simulations to perform"
     )
     parser.add_argument(
         "-e",
@@ -56,15 +59,15 @@ def build_parser():
     parser.add_argument(
         "-o",
         "--outfile",
-        default="drift_simultion.csv",
-        help="Name of file to write output to.",
+        default="drift_simultion",
+        help="Prefix for files to write output to.",
     )
 
     return parser
 
 
 def drift_neutral(
-    initial: np.array,
+    initial: float,
     total_pop: int,
     no_males: int,
     no_females: int,
@@ -88,11 +91,15 @@ def drift_neutral(
         Each element of the returned vector represents the final
         allele frequency for one simulation.
     """
-    ones = initial * total_pop * 2
-    initial1 = np.ones(ones)
-    initial0 = np.zeros(1 - ones)
+    from math import trunc
+
+    float_ones = initial * total_pop * 2
+    trunc_ones = trunc(float_ones)
+
+    initial1 = np.ones(trunc_ones)
+    initial0 = np.zeros((2 * total_pop) - trunc_ones)
     # array to hold current alleles in population
-    freq_array = np.concatenate(initial1, initial0)
+    freq_array = np.concatenate((initial1, initial0))
 
     # final_frequencies stores only the final cycle's
     # allele frequencies. This makes sense when considering
@@ -103,7 +110,7 @@ def drift_neutral(
     for s in range(sims):
         # create an array to hold the allele frequency
         # at the end of each cycle
-        gen_freq = np.zeros(cycles)
+        gen_freq = np.zeros(cycles + 1)
         # cycle 0 is simply the initial allele frequency
         gen_freq[0] = initial
 
@@ -131,11 +138,21 @@ if __name__ == "__main__":
     else:
         initial = args.initial
 
+    # set dimensions for results matrix
+    mat_n = initial.shape[0]
+    results_matrix = np.zeros((mat_n, args.sims))
+
+    row = 0
+    for freq in np.nditer(initial):
+        results_matrix[row] = drift_neutral(
+            freq, args.total_pop, args.no_males, args.no_females, args.cycles, args.sims
+        )
+        row += 1
+
+    print(results_matrix)
 # Several things to add:
-# 1) Ability to take in array of frequencies, then apply above function to
-# said arrray (may have to rewrite function to work; whatever)
-# should un-randomize, make sure get same values returned
+# 1) should un-randomize, make sure get same values returned
 # given the same frequency (do for multiple frequencies so can feel safer)
-# Should start working on unit tests. Should factor out function.
-# 2) add in quantiles...change file name to file prefix to output multiple files.
-# 3) Add in plotting abilities (nice to have)
+# 2) Should start working on unit tests. Should factor out function.
+# 3) add in quantiles...change file name to file prefix to output multiple files.
+# 4) Add in plotting abilities (nice to have)
