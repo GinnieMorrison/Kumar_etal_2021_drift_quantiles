@@ -33,10 +33,18 @@ def build_parser():
         help="Population size in each generation (number of progeny)",
     )
     parser.add_argument(
-        "-m", "--no_males", type=int, default=48, help="Number of males contributing gametes"
+        "-m",
+        "--no_males",
+        type=int,
+        default=48,
+        help="Number of males contributing gametes",
     )
     parser.add_argument(
-        "-f", "--no_females", type=int, default=48, help="Number of females contributing gametes"
+        "-f",
+        "--no_females",
+        type=int,
+        default=48,
+        help="Number of females contributing gametes",
     )
     parser.add_argument(
         "-c", "--cycles", default=1, help="Number of generations of random mating"
@@ -55,6 +63,29 @@ def build_parser():
         "--step",
         type=float,
         help="Step between allele frequences. E.g., the default of 0.1 results in simulating drift for starting allele frequencies of 0, 0.1, 0.2,...1",
+    )
+    parser.add_argument(
+        "-q",
+        "quantiles",
+        action=StoreAsArray,
+        type=float,
+        nargs="+",
+        help="Array of quantiles to calculate, defaults to .1, .9 ... .000001, .999999 (12 total)",
+        default = np.array(
+            [
+                0.1,
+                0.9,
+                0.01,
+                0.99,
+                0.001,
+                0.999,
+                0.0001,
+                0.9999,
+                0.00001,
+                0.99999,
+                0.000001,
+                0.999999,
+            ],
     )
     parser.add_argument(
         "-o",
@@ -125,6 +156,15 @@ def drift_neutral(
     return final_frequencies
 
 
+def calculate_quantiles(frequency_array: np.array, quantile_array: np.array)) -> np.array:
+    #once upgrade numpy, add in method option
+    return np.quantile(
+        frequency_array,
+        quantile_array,
+        #method="median_unbiased",
+    )
+
+
 if __name__ == "__main__":
     args = build_parser().parse_args()
     if args.initial is None and not args.step:
@@ -139,20 +179,30 @@ if __name__ == "__main__":
         initial = args.initial
 
     # set dimensions for results matrix
+    # the first column of the matrix will be the intial frequencies
+    # largely for clarity.
     mat_n = initial.shape[0]
-    results_matrix = np.zeros((mat_n, args.sims))
+    mat_m = args.sims + 1
+    results_matrix = np.zeros((mat_n, mat_m))
+    results_matrix[:, 0] = initial
+
+    qs = args.quantiles.shape[0]
+    quantile_matrix = np.zeros(mat_n +1 , qs)
+    quantile_martix[0] = args.quantiles 
 
     row = 0
     for freq in np.nditer(initial):
-        results_matrix[row] = drift_neutral(
+        final_sim_frequencies = drift_neutral(
             freq, args.total_pop, args.no_males, args.no_females, args.cycles, args.sims
         )
+        results_matrix[row, 1:] = final_sim_frequencies
+        qts = calculate_quantiles(final_sim_frequencies, args.quantiles)
+        quantile_matrix[row + 1] = qts
         row += 1
-
-    print(results_matrix)
+    
 # Several things to add:
 # 1) should un-randomize, make sure get same values returned
 # given the same frequency (do for multiple frequencies so can feel safer)
 # 2) Should start working on unit tests. Should factor out function.
-# 3) add in quantiles...change file name to file prefix to output multiple files.
+# 3) write out files
 # 4) Add in plotting abilities (nice to have)
