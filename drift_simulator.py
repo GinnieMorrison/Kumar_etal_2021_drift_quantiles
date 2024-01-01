@@ -66,12 +66,12 @@ def build_parser():
     )
     parser.add_argument(
         "-q",
-        "quantiles",
+        "--quantiles",
         action=StoreAsArray,
         type=float,
         nargs="+",
         help="Array of quantiles to calculate, defaults to .1, .9 ... .000001, .999999 (12 total)",
-        default = np.array(
+        default=np.array(
             [
                 0.1,
                 0.9,
@@ -85,12 +85,20 @@ def build_parser():
                 0.99999,
                 0.000001,
                 0.999999,
-            ],
+            ]
+        ),
+    )
+    parser.add_argument(
+        "-r",
+        "--run_quantiles",
+        type=bool,
+        default=True,
+        help="Whether or not to calcualte quantiles as given by quantiles.",
     )
     parser.add_argument(
         "-o",
         "--outfile",
-        default="drift_simultion",
+        default="drift_simulation",
         help="Prefix for files to write output to.",
     )
 
@@ -156,13 +164,20 @@ def drift_neutral(
     return final_frequencies
 
 
-def calculate_quantiles(frequency_array: np.array, quantile_array: np.array)) -> np.array:
-    #once upgrade numpy, add in method option
+def calculate_quantiles(
+    frequency_array: np.array, quantile_array: np.array
+) -> np.array:
+    # once upgrade numpy, add in method option
     return np.quantile(
         frequency_array,
         quantile_array,
-        #method="median_unbiased",
+        # method="median_unbiased",
     )
+
+
+def write_matrix(prefix: str, suffix: str, matrix: np.array):
+    file_name = "{}_{}.txt.gz".format(prefix, suffix)
+    np.savetxt(file_name, matrix, fmt="%f")
 
 
 if __name__ == "__main__":
@@ -187,8 +202,8 @@ if __name__ == "__main__":
     results_matrix[:, 0] = initial
 
     qs = args.quantiles.shape[0]
-    quantile_matrix = np.zeros(mat_n +1 , qs)
-    quantile_martix[0] = args.quantiles 
+    quantile_matrix = np.zeros((mat_n + 1, qs))
+    quantile_matrix[0] = args.quantiles
 
     row = 0
     for freq in np.nditer(initial):
@@ -196,13 +211,18 @@ if __name__ == "__main__":
             freq, args.total_pop, args.no_males, args.no_females, args.cycles, args.sims
         )
         results_matrix[row, 1:] = final_sim_frequencies
-        qts = calculate_quantiles(final_sim_frequencies, args.quantiles)
-        quantile_matrix[row + 1] = qts
+        if args.run_quantiles:
+            qts = calculate_quantiles(final_sim_frequencies, args.quantiles)
+            quantile_matrix[row + 1] = qts
         row += 1
-    
+
+    write_matrix(args.outfile, "sim_frequencies", results_matrix)
+
+    if args.run_quantiles:
+        write_matrix(args.outfile, "quantiles", quantile_matrix)
+
 # Several things to add:
 # 1) should un-randomize, make sure get same values returned
 # given the same frequency (do for multiple frequencies so can feel safer)
 # 2) Should start working on unit tests. Should factor out function.
-# 3) write out files
-# 4) Add in plotting abilities (nice to have)
+# 3) Add in plotting abilities (nice to have)
